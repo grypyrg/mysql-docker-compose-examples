@@ -1,5 +1,22 @@
 version: '3'
 services:
+  consul-server:
+    image: consul:latest
+    environment:
+      - CONSUL_BIND_INTERFACE=eth0
+    ports:
+      - 8500:8500/tcp
+      - 8600:8600/tcp
+      - 8600:8600/udp
+  registrator:
+    image: gliderlabs/registrator:latest
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock
+    environment:
+      - CONSUL_BIND_INTERFACE=eth0
+    depends_on:
+      - consul-server
+    command: ["-retry-attempts=-1", "consul://consul-server:8500"]
   mysql-server-1:
     env_file:
       - mysql-server.env
@@ -7,6 +24,8 @@ services:
     ports:
       - "3301:3306"
     command: ["mysqld","--server_id=1","--binlog_checksum=NONE","--gtid_mode=ON","--enforce_gtid_consistency=ON","--log_bin","--log_slave_updates=ON","--master_info_repository=TABLE","--relay_log_info_repository=TABLE","--transaction_write_set_extraction=XXHASH64","--user=mysql","--skip-host-cache","--skip-name-resolve", "--default_authentication_plugin=mysql_native_password"]
+    depends_on:
+      - registrator
   mysql-server-2:
     env_file:
       - mysql-server.env
@@ -14,6 +33,8 @@ services:
     command: ["mysqld","--server_id=2","--binlog_checksum=NONE","--gtid_mode=ON","--enforce_gtid_consistency=ON","--log_bin","--log_slave_updates=ON","--master_info_repository=TABLE","--relay_log_info_repository=TABLE","--transaction_write_set_extraction=XXHASH64","--user=mysql","--skip-host-cache","--skip-name-resolve", "--default_authentication_plugin=mysql_native_password"]
     ports:
       - "3302:3306"
+    depends_on:
+      - registrator
   mysql-server-3:
     env_file:
       - mysql-server.env
@@ -21,6 +42,8 @@ services:
     command: ["mysqld","--server_id=3","--binlog_checksum=NONE","--gtid_mode=ON","--enforce_gtid_consistency=ON","--log_bin","--log_slave_updates=ON","--master_info_repository=TABLE","--relay_log_info_repository=TABLE","--transaction_write_set_extraction=XXHASH64","--user=mysql","--skip-host-cache","--skip-name-resolve", "--default_authentication_plugin=mysql_native_password"]
     ports:
       - "3303:3306"
+    depends_on:
+      - registrator
   mysql-shell:
     env_file:
       - mysql-shell.env
@@ -28,26 +51,46 @@ services:
     volumes:
         - ./scripts/:/scripts/
     depends_on:
+      - registrator
       - mysql-server-1
       - mysql-server-2
       - mysql-server-3
-  mysql-router:
+  mysql-router-1:
+    env_file:
+      - mysql-router.env
+    image: mysql/mysql-router:8.0
+    ports:
+      - "6445:6446"
+    depends_on:
+      - registrator
+      - mysql-server-1
+      - mysql-server-2
+      - mysql-server-3
+      - mysql-shell
+    restart: on-failure
+  mysql-router-2:
     env_file:
       - mysql-router.env
     image: mysql/mysql-router:8.0
     ports:
       - "6446:6446"
     depends_on:
+      - registrator
       - mysql-server-1
       - mysql-server-2
       - mysql-server-3
       - mysql-shell
     restart: on-failure
-  dbwebapp:
+  mysql-router-3:
     env_file:
-      - dbwebapp.env
-    image: neumayer/dbwebapp
+      - mysql-router.env
+    image: mysql/mysql-router:8.0
     ports:
-      - "8080:8080"
+      - "6447:6446"
     depends_on:
-      - mysql-router
+      - registrator
+      - mysql-server-1
+      - mysql-server-2
+      - mysql-server-3
+      - mysql-shell
+    restart: on-failure
