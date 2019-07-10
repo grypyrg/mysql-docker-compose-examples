@@ -1,0 +1,7 @@
+{
+  "log_level": "info",
+  "dns_config": {
+  "service_ttl": {"*": "10s"},
+  "node_ttl": "30s"
+  }
+}
