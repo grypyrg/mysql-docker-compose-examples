@@ -2,22 +2,52 @@ version: '3'
 services:
   consul-server:
     image: consul:latest
+    container_name: consul-server
     environment:
       - CONSUL_BIND_INTERFACE=eth0
+      - SERVICE_IGNORE=true
+    volumes:
+      - ./consul-config:/consul/config
     ports:
       - 8500:8500/tcp
       - 8600:8600/tcp
       - 8600:8600/udp
   registrator:
     image: gliderlabs/registrator:latest
+    container_name: registrator
     volumes:
       - /var/run/docker.sock:/tmp/docker.sock
     environment:
       - CONSUL_BIND_INTERFACE=eth0
     depends_on:
       - consul-server
-    command: ["-retry-attempts=-1", "consul://consul-server:8500"]
+#    command: ["-resync=30", "-cleanup=true", "-ip=127.0.0.1", "-retry-attempts=-1", "consul://consul-server:8500"]
+    command: ["-resync=30", "-cleanup=true", "-tags=docker-ip", "-internal", "-retry-attempts=-1", "consul://consul-server:8500"]
+  consul-server-ttl:
+    image: consul:latest
+    container_name: consul-server-ttl
+    environment:
+      - CONSUL_BIND_INTERFACE=eth0
+      - SERVICE_IGNORE=true
+    volumes:
+      - ./consul-config-ttl:/consul/config
+    ports:
+      - 8501:8500/tcp
+      - 8601:8600/tcp
+      - 8601:8600/udp
+  registrator-ttl:
+    image: gliderlabs/registrator:latest
+    container_name: registrator-ttl
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock
+    environment:
+      - CONSUL_BIND_INTERFACE=eth0
+    depends_on:
+      - consul-server
+#    command: ["-resync=30", "-cleanup=true", "-ip=127.0.0.1", "-retry-attempts=-1", "consul://consul-server:8500"]
+    command: ["-resync=30", "-cleanup=true", "-tags=docker-ip", "-internal", "-retry-attempts=-1", "consul://consul-server-ttl:8500"]
   mysql-server-1:
+    container_name: mysql-server-1
     env_file:
       - mysql-server.env
     image: mysql/mysql-server:8.0.12
@@ -27,6 +57,7 @@ services:
     depends_on:
       - registrator
   mysql-server-2:
+    container_name: mysql-server-2
     env_file:
       - mysql-server.env
     image: mysql/mysql-server:8.0.12
@@ -36,6 +67,7 @@ services:
     depends_on:
       - registrator
   mysql-server-3:
+    container_name: mysql-server-3
     env_file:
       - mysql-server.env
     image: mysql/mysql-server:8.0.12
@@ -45,6 +77,7 @@ services:
     depends_on:
       - registrator
   mysql-shell:
+    container_name: mysql-shell
     env_file:
       - mysql-shell.env
     image: neumayer/mysql-shell-batch
@@ -56,11 +89,17 @@ services:
       - mysql-server-2
       - mysql-server-3
   mysql-router-1:
+    container_name: mysql-router-1
     env_file:
       - mysql-router.env
+    environment:
+      - SERVICE_TAGS=regionA
     image: mysql/mysql-router:8.0
     ports:
       - "6445:6446"
+      - "7445:6447"
+      - "64450:64460"
+      - "54450:64470"
     depends_on:
       - registrator
       - mysql-server-1
@@ -69,11 +108,17 @@ services:
       - mysql-shell
     restart: on-failure
   mysql-router-2:
+    container_name: mysql-router-2
     env_file:
       - mysql-router.env
     image: mysql/mysql-router:8.0
+    environment:
+      - SERVICE_TAGS=regionA
     ports:
       - "6446:6446"
+      - "7446:6447"
+      - "64460:64460"
+      - "54460:64470"
     depends_on:
       - registrator
       - mysql-server-1
@@ -82,11 +127,17 @@ services:
       - mysql-shell
     restart: on-failure
   mysql-router-3:
+    container_name: mysql-router-3
     env_file:
       - mysql-router.env
+    environment:
+      - SERVICE_TAGS=regionB
     image: mysql/mysql-router:8.0
     ports:
       - "6447:6446"
+      - "7447:6447"
+      - "64470:64460"
+      - "54470:64470"
     depends_on:
       - registrator
       - mysql-server-1
