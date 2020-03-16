@@ -1,0 +1,32 @@
+diff --git a/lib/mysql/connector/__init__.py b/lib/mysql/connector/__init__.py
+index a2acf2d..fd90b96 100644
+--- a/lib/mysql/connector/__init__.py
++++ b/lib/mysql/connector/__init__.py
+@@ -166,10 +166,7 @@ def connect(*args, **kwargs):
+             kwargs['host'] = DEFAULT_CONFIGURATION['host']
+
+         try:
+-            host = kwargs["host"] \
+-                if kwargs["host"].startswith("_mysql._tcp") \
+-                else "_mysql._tcp.{}".format(kwargs["host"])
+-            srv_records = dns.resolver.query(host, "SRV")
++            srv_records = dns.resolver.query(kwargs['host'], 'SRV')
+         except dns.exception.DNSException:
+             raise InterfaceError("Unable to locate any hosts for '{0}'"
+                                  "".format(kwargs['host']))
+diff --git a/lib/mysqlx/connection.py b/lib/mysqlx/connection.py
+index bac47e4..83c1e06 100644
+--- a/lib/mysqlx/connection.py
++++ b/lib/mysqlx/connection.py
+@@ -1367,10 +1367,7 @@ class Session(object):
+         # Check for DNS SRV
+         if settings.get("host") and settings.get("dns-srv"):
+             try:
+-                host = settings["host"] \
+-                    if settings["host"].startswith("_mysqlx._tcp") \
+-                    else "_mysqlx._tcp.{}".format(settings["host"])
+-                srv_records = dns.resolver.query(host, "SRV")
++                srv_records = dns.resolver.query(settings["host"], "SRV")
+             except dns.exception.DNSException:
+                 raise InterfaceError("Unable to locate any hosts for '{0}'"
+                                      "".format(settings["host"]))

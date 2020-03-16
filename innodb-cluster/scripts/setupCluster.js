@@ -11,6 +11,7 @@ try {
   cluster.addInstance({user: "root", host: "mysql-server-3", password: dbPass})
   print('.\nInstances successfully added to the cluster.');
   print('\nInnoDB cluster deployed successfully.\n');
+  cluster.setOption("autoRejoinTries", 3)
 } catch(e) {
   print('\nThe InnoDB cluster could not be created.\n\nError: ' + e.message + '\n');
 }

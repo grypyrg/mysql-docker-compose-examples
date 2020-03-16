@@ -1,7 +1,10 @@
 {
   "log_level": "info",
+  "ports": {
+    "dns": 53      
+  },
   "dns_config": {
-  "service_ttl": {"*": "10s"},
-  "node_ttl": "30s"
+   "service_ttl": {"*": "60s"},
+   "node_ttl": "60s"
   }
 }

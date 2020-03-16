@@ -1,0 +1,2 @@
+protobuf>=3.0.0
+dnspython==1.16.0

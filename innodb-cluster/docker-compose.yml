@@ -6,12 +6,15 @@ services:
     environment:
       - CONSUL_BIND_INTERFACE=eth0
       - SERVICE_IGNORE=true
+      - CONSUL_ALLOW_PRIVILEGED_PORTS=true
+    cap_add:
+      - ALL
     volumes:
       - ./consul-config:/consul/config
     ports:
       - 8500:8500/tcp
-      - 8600:8600/tcp
-      - 8600:8600/udp
+      - 8600:53/tcp
+      - 8600:53/udp
   registrator:
     image: gliderlabs/registrator:latest
     container_name: registrator
@@ -29,12 +32,15 @@ services:
     environment:
       - CONSUL_BIND_INTERFACE=eth0
       - SERVICE_IGNORE=true
+      - CONSUL_ALLOW_PRIVILEGED_PORTS=true
     volumes:
       - ./consul-config-ttl:/consul/config
+    cap_add:
+      - ALL
     ports:
       - 8501:8500/tcp
-      - 8601:8600/tcp
-      - 8601:8600/udp
+      - 8601:53/tcp
+      - 8601:53/udp
   registrator-ttl:
     image: gliderlabs/registrator:latest
     container_name: registrator-ttl
@@ -45,12 +51,12 @@ services:
     depends_on:
       - consul-server
 #    command: ["-resync=30", "-cleanup=true", "-ip=127.0.0.1", "-retry-attempts=-1", "consul://consul-server:8500"]
-    command: ["-resync=30", "-cleanup=true", "-tags=docker-ip", "-internal", "-retry-attempts=-1", "consul://consul-server-ttl:8500"]
+    command: ["-resync=30", "-cleanup=true", "-tags=docker-ip", "-internal", "-retry-attempts=-1", "-retry-interval=30000", "-ttl=120", "-ttl-refresh=60", "consul://consul-server-ttl:8500"]
   mysql-server-1:
     container_name: mysql-server-1
     env_file:
       - mysql-server.env
-    image: mysql/mysql-server:8.0.12
+    image: mysql/mysql-server:8.0.18
     ports:
       - "3301:3306"
     command: ["mysqld","--server_id=1","--binlog_checksum=NONE","--gtid_mode=ON","--enforce_gtid_consistency=ON","--log_bin","--log_slave_updates=ON","--master_info_repository=TABLE","--relay_log_info_repository=TABLE","--transaction_write_set_extraction=XXHASH64","--user=mysql","--skip-host-cache","--skip-name-resolve", "--default_authentication_plugin=mysql_native_password"]
@@ -60,7 +66,7 @@ services:
     container_name: mysql-server-2
     env_file:
       - mysql-server.env
-    image: mysql/mysql-server:8.0.12
+    image: mysql/mysql-server:8.0.18
     command: ["mysqld","--server_id=2","--binlog_checksum=NONE","--gtid_mode=ON","--enforce_gtid_consistency=ON","--log_bin","--log_slave_updates=ON","--master_info_repository=TABLE","--relay_log_info_repository=TABLE","--transaction_write_set_extraction=XXHASH64","--user=mysql","--skip-host-cache","--skip-name-resolve", "--default_authentication_plugin=mysql_native_password"]
     ports:
       - "3302:3306"
@@ -70,7 +76,7 @@ services:
     container_name: mysql-server-3
     env_file:
       - mysql-server.env
-    image: mysql/mysql-server:8.0.12
+    image: mysql/mysql-server:8.0.18
     command: ["mysqld","--server_id=3","--binlog_checksum=NONE","--gtid_mode=ON","--enforce_gtid_consistency=ON","--log_bin","--log_slave_updates=ON","--master_info_repository=TABLE","--relay_log_info_repository=TABLE","--transaction_write_set_extraction=XXHASH64","--user=mysql","--skip-host-cache","--skip-name-resolve", "--default_authentication_plugin=mysql_native_password"]
     ports:
       - "3303:3306"

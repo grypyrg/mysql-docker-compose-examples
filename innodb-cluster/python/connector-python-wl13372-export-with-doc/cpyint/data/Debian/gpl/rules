@@ -1,0 +1,168 @@
+#!/usr/bin/make -f
+
+# Copyright (c) 2014, 2019, Oracle and/or its affiliates. All rights reserved.
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License, version 2.0, as
+# published by the Free Software Foundation.
+#
+# This program is also distributed with certain software (including
+# but not limited to OpenSSL) that is licensed under separate terms,
+# as designated in a particular file or component or in included license
+# documentation.  The authors of MySQL hereby grant you an
+# additional permission to link the program and your derivative works
+# with the separately licensed software that they have included with
+# MySQL.
+#
+# Without limiting anything contained in the foregoing, this file,
+# which is part of MySQL Connector/Python, is also subject to the
+# Universal FOSS Exception, version 1.0, a copy of which can be found at
+# http://oss.oracle.com/licenses/universal-foss-exception.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the GNU General Public License, version 2.0, for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software Foundation, Inc.,
+# 51 Franklin St, Fifth Floor, Boston, MA 02110-1301  USA
+
+DEB_PYTHON_INSTALL_ARGS_ALL = --install-layout=deb
+
+ifeq ($(origin MYSQL_CAPI), undefined)
+    $(error Please set environment variable MYSQL_CAPI \
+    pointing to location of MySQL Connector/C)
+endif
+
+ifeq ($(origin MYSQLXPB_PROTOBUF_INCLUDE_DIR), undefined)
+    $(error Please set environment variable MYSQLXPB_PROTOBUF_INCLUDE_DIR \
+    pointing to location of Protobuf include dir)
+endif
+
+ifeq ($(origin MYSQLXPB_PROTOBUF_LIB_DIR), undefined)
+    $(error Please set environment variable MYSQLXPB_PROTOBUF_LIB_DIR \
+    pointing to location of Protobuf library dir)
+endif
+
+ifeq ($(origin MYSQLXPB_PROTOC), undefined)
+    $(error Please set environment variable MYSQLXPB_PROTOC \
+    pointing to location of Protobuf protoc binary)
+endif
+
+# Check whether we have Python v3 support
+ifneq ($(shell which py3versions 2>/dev/null),)
+  WITHPYTHON="python2,python3"
+  PYTHON3_SUPPORTED=$(shell py3versions -sv)
+else
+  WITHPYTHON="python2"
+  PYTHON3_SUPPORTED=
+endif
+
+# We do not support Python v2.5
+PYTHON2_SUPPORTED=$(shell pyversions -sv | sed -e "s/\s*2\.5\s*//g")
+
+%:
+	dh $@ --buildsystem=python_distutils --with $(WITHPYTHON)
+
+override_dh_auto_build:
+	# The mysql/__init__.py modules are removed and recreated in the
+	# postinst script.
+
+	# Python v2
+	set -xe; for pyver in $(PYTHON2_SUPPORTED); do \
+		python$$pyver setup.py \
+			build --build-base=build --build-lib=build/python2 \
+			    --build-platlib=build/python2; \
+		rm build/python2/mysql/__init__.py; \
+	done
+
+	# Python v2 C Extension
+	if [ -n "$(WITH_CEXT)" ]; then \
+	    set -xe; for pyver in $(PYTHON2_SUPPORTED); do \
+		    python$$pyver setup.py \
+			    build_ext_static --build-lib=build/python2_cext \
+			        --with-mysql-capi=$(MYSQL_CAPI) \
+			        --with-protobuf-include-dir=$(MYSQLXPB_PROTOBUF_INCLUDE_DIR) \
+			        --with-protobuf-lib-dir=$(MYSQLXPB_PROTOBUF_LIB_DIR) \
+			        --with-protoc=$(MYSQLXPB_PROTOC) \
+			        --extra-compile-args="$(EXTRA_COMPILE_ARGS)" \
+			        --extra-link-args="$(EXTRA_LINK_ARGS)"; \
+	    done \
+	fi
+
+	# Python v3
+	set -xe; for pyver in $(PYTHON3_SUPPORTED); do \
+		python$$pyver setup.py \
+			build --build-base=build --build-lib=build/python3 \
+			    --build-platlib=build/python3; \
+		rm build/python3/mysql/__init__.py; \
+	done
+
+	# Python v3 C Extension
+	if [ -n "$(WITH_CEXT)" ]; then \
+        set -xe; for pyver in $(PYTHON3_SUPPORTED); do \
+            python$$pyver setup.py \
+                build_ext_static --build-lib=build/python3_cext \
+                    --with-mysql-capi=$(MYSQL_CAPI) \
+                    --with-protobuf-include-dir=$(MYSQLXPB_PROTOBUF_INCLUDE_DIR) \
+                    --with-protobuf-lib-dir=$(MYSQLXPB_PROTOBUF_LIB_DIR) \
+                    --with-protoc=$(MYSQLXPB_PROTOC) \
+                    --extra-compile-args="$(EXTRA_COMPILE_ARGS)" \
+                    --extra-link-args="$(EXTRA_LINK_ARGS)"; \
+        done \
+	fi
+
+override_dh_auto_install:
+	# We make sure we do not build again, since mysql/__init__.py has
+	# to be removed, which is done in dh_auto_build
+
+	# Python v2
+	set -xe; \
+	DESTDIR=$(CURDIR)/debian/mysql-connector-python; \
+	for pyver in $(PYTHON2_SUPPORTED); do \
+		python$$pyver setup.py \
+			install_lib --build-dir=build/python2 \
+			install --skip-build --install-layout=deb \
+			--root $$DESTDIR; \
+	done
+
+	# Python v2 C Extension
+	set -xe; \
+	DESTDIR=$(CURDIR)/debian/mysql-connector-python-cext; \
+	for pyver in $(PYTHON2_SUPPORTED); do \
+		python$$pyver setup.py \
+			install_lib --build-dir=build/python2_cext \
+			install --skip-build --install-layout=deb \
+			--root $$DESTDIR; \
+		find $$DESTDIR -name 'mysql_connector_*.egg-info' -prune -exec rm -rf {} \;; \
+	done
+
+	# Python v3
+	set -xe; \
+	DESTDIR=$(CURDIR)/debian/mysql-connector-python-py3; \
+	for pyver in $(PYTHON3_SUPPORTED); do \
+		python$$pyver setup.py \
+			install_lib --build-dir=build/python3 \
+			install --skip-build --install-layout=deb \
+			--root $$DESTDIR; \
+	done
+
+	# Python v3 C Extension
+	set -xe; \
+	DESTDIR=$(CURDIR)/debian/mysql-connector-python-cext-py3; \
+	for pyver in $(PYTHON3_SUPPORTED); do \
+		python$$pyver setup.py \
+			install_lib --build-dir=build/python3_cext \
+			install --skip-build --install-layout=deb \
+			--root $$DESTDIR; \
+		find $$DESTDIR -name 'mysql_connector_*.egg-info' -prune -exec rm -rf {} \;; \
+	done
+
+override_dh_installdocs:
+	dh_installdocs --all LICENSE.txt
+	dh_installdocs --all README.txt
+	dh_installdocs --all README.rst
+	dh_installdocs --all CONTRIBUTING.rst
+	dh_installdocs --all docs/INFO_SRC
+	dh_installdocs --all docs/INFO_BIN

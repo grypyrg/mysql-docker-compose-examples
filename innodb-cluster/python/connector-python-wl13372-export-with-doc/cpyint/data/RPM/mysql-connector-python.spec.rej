@@ -1,0 +1,55 @@
+--- cpyint/data/RPM/mysql-connector-python.spec
++++ cpyint/data/RPM/mysql-connector-python.spec
+@@ -48,6 +48,9 @@
+ 
+ %{?fedora: %global with_python3 1}
+ 
++%{!?__python2: %global __python2 %{__python}}
++%{!?python2_sitearch: %global python2_sitearch %{python_sitearch}}
++
+ %{?mysql_capi: %global with_mysql_capi %{mysql_capi}}
+ %{?protobuf_include_dir: %global with_protobuf_include_dir %{protobuf_include_dir}}
+ %{?protobuf_lib_dir: %global with_protobuf_lib_dir %{protobuf_lib_dir}}
+@@ -225,13 +228,13 @@ EXTRA_LINK_ARGS=""
+ 
+ rm -rf %{buildroot}
+ # skip-build is broken
+-%{__python} setup.py ${COMMON_INSTALL_ARGS} \
++%{__python2} setup.py ${COMMON_INSTALL_ARGS} \
+     --extra-compile-args="${EXTRA_COMPILE_ARGS}" \
+     --extra-link-args="${EXTRA_LINK_ARGS}" \
+     --with-mysql-capi=%{with_mysql_capi} %{byte_code_only}
+-rm -rf %{buildroot}%{python_sitearch}/mysql
+-rm -rf %{buildroot}%{python_sitearch}/mysqlx
+-%{__python} setup.py ${COMMON_INSTALL_ARGS} \
++rm -rf %{buildroot}%{python2_sitearch}/mysql
++rm -rf %{buildroot}%{python2_sitearch}/mysqlx
++%{__python2} setup.py ${COMMON_INSTALL_ARGS} \
+     --extra-compile-args="${EXTRA_COMPILE_ARGS}" \
+     --extra-link-args="${EXTRA_LINK_ARGS}" %{byte_code_only}
+ %if 0%{?with_python3}
+@@ -255,18 +258,18 @@ rm -rf %{buildroot}
+ %defattr(-, root, root, -)
+ %doc LICENSE.txt CHANGES.txt README.txt README.rst CONTRIBUTING.rst docs/INFO_SRC docs/INFO_BIN
+ # For old generic python modules
+-%{python_sitearch}/mysql
+-%{python_sitearch}/mysqlx
++%{python2_sitearch}/mysql
++%{python2_sitearch}/mysqlx
+ %if 0%{?rhel} > 5 || 0%{?fedora} > 12 || 0%{?suse_version} >= 1100
+-%{python_sitearch}/mysql_connector_python-*.egg-info
++%{python2_sitearch}/mysql_connector_python-*.egg-info
+ %endif
+ 
+ %files cext
+ %defattr(-, root, root, -)
+ %doc LICENSE.txt CHANGES.txt README.txt README.rst CONTRIBUTING.rst docs/INFO_SRC docs/INFO_BIN
+-%{python_sitearch}/_mysql_connector.so
+-%{python_sitearch}/_mysqlxpb.so
+-%{python_sitearch}/mysql_connector_python-*.egg-info
++%{python2_sitearch}/_mysql_connector.so
++%{python2_sitearch}/_mysqlxpb.so
++%{python2_sitearch}/mysql_connector_python-*.egg-info
+ 
+ %if 0%{?with_python3}
+ %files -n mysql-connector-python3%{?product_suffix}
